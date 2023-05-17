@@ -9,22 +9,30 @@ const app = express();
 
 app.get("/get-content", async (req, res) => {
   try {
-    const response = await axios({
+    const { data } = await axios<APIMessage[]>({
       method: "GET",
       baseURL: `https://discord.com/api/v10/channels/1108109671883096064/messages`,
       headers: {
         Authorization: `Bot ${process.env.DISCORD_BOT_SECRET_TOKEN}`,
       },
     });
-    res.send(response.data);
+    const allAttachments = data.reduce((attachments, message) => {
+      if (message.attachments.length > 0) {
+        attachments.push(...message.attachments);
+      }
+      return attachments;
+    }, []);
+    res.json({
+      images: allAttachments,
+    });
   } catch (err) {
-    res.send({
+    res.json({
       ...err,
     });
   }
 });
 app.get("/", (req, res) => {
-  res.send({ message: "Hello API" });
+  res.json({ message: "Hello API" });
 });
 app.listen(port, host, () => {
   console.log(`[ ready ] http://${host}:${port}`);
