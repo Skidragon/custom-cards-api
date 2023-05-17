@@ -1,29 +1,50 @@
 import express from "express";
 import axios from "axios";
-import { APIMessage } from "discord-api-types/v10";
+import {
+  APIChannel,
+  APIMessage,
+  RESTGetAPIGuildThreadsResult,
+} from "discord-api-types/v10";
+import rateLimit from "express-rate-limit";
 
 const host = process.env.HOST ?? "localhost";
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const app = express();
-
-app.get("/get-content", async (req, res) => {
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 2, // Limit each IP to 100 requests per windowMs
+  message: "Too many requests from this IP, please try again later.",
+});
+const DISCORD_BASE_URL = "https://discord.com/api/v10";
+app.get("/get-cards", async (req, res) => {
   try {
-    const { data } = await axios<APIMessage[]>({
+    const activeThreads = await axios<{ threads: APIChannel[] }>({
       method: "GET",
-      baseURL: `https://discord.com/api/v10/channels/1108109671883096064/messages`,
+      baseURL: `https://discord.com/api/v10/guilds/1108002892905992254/threads/active`,
       headers: {
         Authorization: `Bot ${process.env.DISCORD_BOT_SECRET_TOKEN}`,
       },
     });
-    const allAttachments = data.reduce((attachments, message) => {
-      if (message.attachments.length > 0) {
-        attachments.push(...message.attachments);
-      }
-      return attachments;
-    }, []);
+
+    const channelIds = activeThreads.data.threads.map((thread) => thread.id);
+
+    const requests = channelIds.map((channelId) => {
+      return axios({
+        method: "GET",
+        baseURL: `https://discord.com/api/v10/channels/${channelId}/messages`,
+        headers: {
+          Authorization: `Bot ${process.env.DISCORD_BOT_SECRET_TOKEN}`,
+        },
+      });
+    });
+    const channelsResponses = await Promise.all(requests);
+    const channels = channelsResponses.map(
+      (channelResponse) => channelResponse.data
+    );
+
     res.json({
-      images: allAttachments,
+      cards: channels,
     });
   } catch (err) {
     res.json({
