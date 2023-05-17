@@ -3,6 +3,7 @@ import axios from "axios";
 import {
   APIChannel,
   APIMessage,
+  GatewayThreadListSync,
   RESTGetAPIGuildThreadsResult,
 } from "discord-api-types/v10";
 import rateLimit from "express-rate-limit";
@@ -19,9 +20,11 @@ const limiter = rateLimit({
 const DISCORD_BASE_URL = "https://discord.com/api/v10";
 app.get("/get-cards", async (req, res) => {
   try {
-    const activeThreads = await axios<{ threads: APIChannel[] }>({
+    const GUILD_ID = "1108002892905992254";
+    const activeThreads = await axios<GatewayThreadListSync>({
       method: "GET",
-      baseURL: `https://discord.com/api/v10/guilds/1108002892905992254/threads/active`,
+      baseURL: DISCORD_BASE_URL,
+      url: `/guilds/${GUILD_ID}/threads/active`,
       headers: {
         Authorization: `Bot ${process.env.DISCORD_BOT_SECRET_TOKEN}`,
       },
@@ -30,21 +33,24 @@ app.get("/get-cards", async (req, res) => {
     const channelIds = activeThreads.data.threads.map((thread) => thread.id);
 
     const requests = channelIds.map((channelId) => {
-      return axios({
+      return axios<APIMessage>({
         method: "GET",
-        baseURL: `https://discord.com/api/v10/channels/${channelId}/messages`,
+        baseURL: DISCORD_BASE_URL,
+        url: `/channels/${channelId}/messages`,
         headers: {
           Authorization: `Bot ${process.env.DISCORD_BOT_SECRET_TOKEN}`,
         },
       });
     });
     const channelsResponses = await Promise.all(requests);
-    const channels = channelsResponses.map(
-      (channelResponse) => channelResponse.data
-    );
+    const channels = channelsResponses
+      .map((channelResponse) => channelResponse.data)
+      .reduce((channels, channel) => {
+        return [...channels, channel];
+      }, [] as APIMessage[]);
 
     res.json({
-      cards: channels,
+      cards: channels.flat(1),
     });
   } catch (err) {
     res.json({
