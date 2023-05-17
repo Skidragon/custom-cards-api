@@ -7,13 +7,14 @@ const host = process.env.HOST ?? "localhost";
 const port = process.env.PORT ? Number(process.env.PORT) : 3000;
 
 const app = express();
+const minute = 60 * 1000;
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 2, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * minute,
+  max: 100, 
   message: "Too many requests from this IP, please try again later.",
 });
 const DISCORD_BASE_URL = "https://discord.com/api/v10";
-app.get("/get-cards", async (req, res) => {
+app.get("/get-cards", limiter, async (req, res) => {
   try {
     const GUILD_ID = "1108450817947730010";
     const activeThreads = await axios<GatewayThreadListSync>({
