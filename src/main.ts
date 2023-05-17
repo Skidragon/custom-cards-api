@@ -1,11 +1,6 @@
 import express from "express";
 import axios from "axios";
-import {
-  APIChannel,
-  APIMessage,
-  GatewayThreadListSync,
-  RESTGetAPIGuildThreadsResult,
-} from "discord-api-types/v10";
+import { APIMessage, GatewayThreadListSync } from "discord-api-types/v10";
 import rateLimit from "express-rate-limit";
 
 const host = process.env.HOST ?? "localhost";
@@ -20,7 +15,7 @@ const limiter = rateLimit({
 const DISCORD_BASE_URL = "https://discord.com/api/v10";
 app.get("/get-cards", async (req, res) => {
   try {
-    const GUILD_ID = "1108002892905992254";
+    const GUILD_ID = "1108450817947730010";
     const activeThreads = await axios<GatewayThreadListSync>({
       method: "GET",
       baseURL: DISCORD_BASE_URL,
